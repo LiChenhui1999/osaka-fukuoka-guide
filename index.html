@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="description" content="大阪与福冈的经典景点及当地餐饮候选。">
   <meta name="theme-color" content="#fff8ed">
-  <title>大阪・福冈｜经典候选</title>
+  <title>大阪・福冈｜景点餐馆候选</title>
   <style>
     :root {
       color-scheme: light;
@@ -358,7 +358,7 @@
 
   <aside class="sidebar" id="sidebar" aria-label="页面导航">
     <p class="nav-kicker">Kansai & Kyushu</p>
-    <p class="nav-title">大阪・福冈<br>经典候选</p>
+    <p class="nav-title">大阪・福冈<br>景点餐馆候选</p>
     <nav>
       <ol class="nav-list">
         <li>
@@ -387,7 +387,7 @@
   <template id="welcomeTemplate">
     <section class="welcome">
       <p class="eyebrow">Kansai & Kyushu City Guide</p>
-      <h1>大阪・福冈<br>经典候选</h1>
+      <h1>大阪・福冈<br>景点餐馆候选</h1>
       <p class="lead">两座城市的经典景点与当地餐饮备选，适合快速浏览和自由组合。</p>
       <div class="welcome-grid">
         <a class="welcome-link" href="#spots">
@@ -406,7 +406,7 @@
 
   <script>
     const pages = {
-      welcome: { title: "大阪・福冈｜经典候选" },
+      welcome: { title: "大阪・福冈｜景点餐馆候选" },
       spots: { title: "景点候选池｜大阪・福冈", file: "06-景点候选池.md" },
       food: { title: "餐饮候选｜大阪・福冈", file: "07-餐饮候选.md" }
     };
@@ -428,13 +428,28 @@
       return text
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;");
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
     }
 
     function inlineMarkdown(text) {
-      return escapeHtml(text)
+      const links = [];
+      const textWithLinkTokens = text.replace(
+        /\[([^\]]+)\]\((https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=[^)]+)\)/g,
+        (_, label, url) => {
+          const token = `MAP_LINK_TOKEN_${links.length}_END`;
+          links.push(
+            `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`
+          );
+          return token;
+        }
+      );
+
+      return escapeHtml(textWithLinkTokens)
         .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-        .replace(/  $/, "<br>");
+        .replace(/  $/, "<br>")
+        .replace(/MAP_LINK_TOKEN_(\d+)_END/g, (_, index) => links[Number(index)]);
     }
 
     function renderMarkdown(markdown) {
