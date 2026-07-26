@@ -65,7 +65,8 @@
 
     .menu-button:focus-visible,
     .nav-link:focus-visible,
-    .welcome-link:focus-visible {
+    .welcome-link:focus-visible,
+    .place-action:focus-visible {
       outline: 3px solid rgb(195 74 54 / 30%);
       outline-offset: 3px;
     }
@@ -293,6 +294,42 @@
       background: #fff;
     }
 
+    .place-card {
+      display: grid;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .place-name {
+      font-weight: 750;
+    }
+
+    .place-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .place-action {
+      min-height: 36px;
+      padding: 7px 11px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      color: var(--accent);
+      background: var(--accent-soft);
+      font: inherit;
+      font-size: .78rem;
+      font-weight: 750;
+      line-height: 1.2;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .place-action.copy-name {
+      color: var(--green);
+      background: var(--green-soft);
+    }
+
     .markdown .task-list li {
       display: grid;
       grid-template-columns: 1.35rem 1fr;
@@ -338,6 +375,7 @@
         text-align: center;
         line-height: 1.4;
       }
+      .place-actions { justify-content: center; }
       .markdown .task-list { grid-template-columns: 1fr; }
       .markdown .task-list li {
         min-height: 62px;
@@ -376,6 +414,11 @@
             <span class="nav-number">07</span><span>餐饮候选</span>
           </a>
         </li>
+        <li>
+          <a class="nav-link" href="#shinkansen" data-page="shinkansen">
+            <span class="nav-number">08</span><span>新干线购票</span>
+          </a>
+        </li>
       </ol>
     </nav>
   </aside>
@@ -408,7 +451,8 @@
     const pages = {
       welcome: { title: "大阪・福冈｜景点餐馆候选" },
       spots: { title: "景点候选池｜大阪・福冈", file: "06-景点候选池.md" },
-      food: { title: "餐饮候选｜大阪・福冈", file: "07-餐饮候选.md" }
+      food: { title: "餐饮候选｜大阪・福冈", file: "07-餐饮候选.md" },
+      shinkansen: { title: "新干线购票｜大阪到福冈", file: "08-新干线购票.md" }
     };
 
     const body = document.body;
@@ -436,11 +480,19 @@
     function inlineMarkdown(text) {
       const links = [];
       const textWithLinkTokens = text.replace(
-        /\[([^\]]+)\]\((https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=[^)]+)\)/g,
-        (_, label, url) => {
+        /\[([^\]]+)\]\((https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=[^\s)]+)(?:\s+"([^"]+)")?\)/g,
+        (_, label, url, japaneseName) => {
           const token = `MAP_LINK_TOKEN_${links.length}_END`;
+          const copyText = japaneseName ||
+            decodeURIComponent(new URL(url).searchParams.get("query") || "").replaceAll("+", " ");
           links.push(
-            `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`
+            `<span class="place-card">` +
+              `<span class="place-name">${escapeHtml(label)}</span>` +
+              `<span class="place-actions">` +
+                `<a class="place-action" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" aria-label="在 Google Maps 查看${escapeHtml(label)}">Google Maps</a>` +
+                `<button class="place-action copy-name" type="button" data-copy-text="${escapeHtml(copyText)}">复制日文名</button>` +
+              `</span>` +
+            `</span>`
           );
           return token;
         }
@@ -501,6 +553,24 @@
       return html.join("\n");
     }
 
+    async function copyToClipboard(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      const copied = document.execCommand("copy");
+      textarea.remove();
+      if (!copied) throw new Error("Copy failed");
+    }
+
     function currentPage() {
       const key = location.hash.slice(1);
       return pages[key] ? key : "welcome";
@@ -544,6 +614,21 @@
 
     menuButton.addEventListener("click", () => setNav(!body.classList.contains("nav-open")));
     backdrop.addEventListener("click", () => setNav(false));
+    page.addEventListener("click", async event => {
+      const button = event.target.closest(".copy-name");
+      if (!button) return;
+
+      const originalLabel = button.textContent;
+      try {
+        await copyToClipboard(button.dataset.copyText);
+        button.textContent = "已复制";
+      } catch {
+        button.textContent = "复制失败";
+      }
+      window.setTimeout(() => {
+        button.textContent = originalLabel;
+      }, 1600);
+    });
     document.addEventListener("keydown", event => {
       if (event.key === "Escape") setNav(false);
     });
