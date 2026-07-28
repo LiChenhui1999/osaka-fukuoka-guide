@@ -280,6 +280,31 @@
       font-size: 1.08rem;
     }
 
+    .markdown h3.region-heading {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 12px;
+    }
+
+    .region-tags {
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .region-tag {
+      padding: 4px 8px;
+      border: 1px solid rgb(195 74 54 / 18%);
+      border-radius: 999px;
+      color: var(--muted);
+      background: var(--paper);
+      font-size: .7rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
     .markdown p { margin: .65em 0; }
 
     .markdown ul {
@@ -582,7 +607,23 @@
         if (heading) {
           closeList();
           const level = heading[1].length;
-          html.push(`<h${level}>${inlineMarkdown(heading[2])}</h${level}>`);
+          const regionParts = level === 3 ? heading[2].split("｜") : [];
+          if (regionParts.length === 2) {
+            const tags = regionParts[1]
+              .split("·")
+              .map(tag => tag.trim())
+              .filter(Boolean)
+              .map(tag => `<span class="region-tag">${escapeHtml(tag)}</span>`)
+              .join("");
+            html.push(
+              `<h3 class="region-heading">` +
+                `<span>${inlineMarkdown(regionParts[0].trim())}</span>` +
+                `<span class="region-tags">${tags}</span>` +
+              `</h3>`
+            );
+          } else {
+            html.push(`<h${level}>${inlineMarkdown(heading[2])}</h${level}>`);
+          }
         } else if (task) {
           if (!listOpen || !taskList) {
             closeList();
