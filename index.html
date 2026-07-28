@@ -69,7 +69,8 @@
     .menu-button:focus-visible,
     .nav-link:focus-visible,
     .welcome-link:focus-visible,
-    .place-action:focus-visible {
+    .place-action:focus-visible,
+    .city-jump-button:focus-visible {
       outline: 3px solid rgb(195 74 54 / 30%);
       outline-offset: 3px;
     }
@@ -339,6 +340,38 @@
       background: var(--green-soft);
     }
 
+    .city-jump-controls {
+      position: fixed;
+      z-index: 25;
+      right: max(16px, env(safe-area-inset-right));
+      bottom: max(18px, env(safe-area-inset-bottom));
+      display: grid;
+      gap: 9px;
+    }
+
+    .city-jump-controls[hidden] { display: none; }
+
+    .city-jump-button {
+      display: grid;
+      place-items: center;
+      width: 48px;
+      height: 48px;
+      padding: 0;
+      border: 1px solid rgb(255 255 255 / 65%);
+      border-radius: 15px;
+      color: #fff;
+      background: var(--accent);
+      box-shadow: 0 8px 22px rgb(76 55 29 / 20%);
+      cursor: pointer;
+      font-size: 1.35rem;
+      font-weight: 800;
+    }
+
+    .city-jump-button:disabled {
+      cursor: default;
+      opacity: .35;
+    }
+
     .markdown .task-list li {
       display: grid;
       grid-template-columns: 1.35rem 1fr;
@@ -436,6 +469,11 @@
 
   <main class="page" id="page" aria-live="polite"></main>
 
+  <div class="city-jump-controls" id="cityJumpControls" aria-label="切换餐饮城市" hidden>
+    <button class="city-jump-button" id="previousCity" type="button" aria-label="上一个城市">↑</button>
+    <button class="city-jump-button" id="nextCity" type="button" aria-label="下一个城市">↓</button>
+  </div>
+
   <template id="welcomeTemplate">
     <section class="welcome">
       <p class="eyebrow">Kansai & Kyushu City Guide</p>
@@ -474,6 +512,10 @@
     const menuButton = document.getElementById("menuButton");
     const backdrop = document.getElementById("backdrop");
     const welcomeTemplate = document.getElementById("welcomeTemplate");
+    const cityJumpControls = document.getElementById("cityJumpControls");
+    const previousCityButton = document.getElementById("previousCity");
+    const nextCityButton = document.getElementById("nextCity");
+    let foodCityHeadings = [];
 
     function setNav(open) {
       body.classList.toggle("nav-open", open);
@@ -592,6 +634,46 @@
       return pages[key] ? key : "welcome";
     }
 
+    function currentFoodCityIndex() {
+      if (!foodCityHeadings.length) return 0;
+      const threshold = 150;
+      let current = 0;
+      foodCityHeadings.forEach((heading, index) => {
+        if (heading.getBoundingClientRect().top <= threshold) current = index;
+      });
+      return current;
+    }
+
+    function updateCityJumpButtons() {
+      if (cityJumpControls.hidden || !foodCityHeadings.length) return;
+      const current = currentFoodCityIndex();
+      previousCityButton.disabled = current === 0;
+      nextCityButton.disabled = current === foodCityHeadings.length - 1;
+    }
+
+    function setUpCityJumps(pageKey) {
+      foodCityHeadings = [];
+      cityJumpControls.hidden = pageKey !== "food";
+      if (pageKey !== "food") return;
+
+      const cityNames = new Set(["大阪", "京都", "福冈"]);
+      foodCityHeadings = [...page.querySelectorAll(".markdown h2")]
+        .filter(heading => cityNames.has(heading.textContent.trim()));
+      foodCityHeadings.forEach((heading, index) => {
+        heading.id = `food-city-${index + 1}`;
+      });
+      updateCityJumpButtons();
+    }
+
+    function jumpFoodCity(offset) {
+      if (!foodCityHeadings.length) return;
+      const destination = Math.max(
+        0,
+        Math.min(foodCityHeadings.length - 1, currentFoodCityIndex() + offset)
+      );
+      foodCityHeadings[destination].scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
     async function loadPage() {
       const key = currentPage();
       const config = pages[key];
@@ -607,13 +689,16 @@
 
       if (key === "welcome") {
         page.replaceChildren(welcomeTemplate.content.cloneNode(true));
+        setUpCityJumps(key);
       } else {
         page.innerHTML = '<div class="markdown"><p class="loading">正在载入内容…</p></div>';
         try {
           const response = await fetch(encodeURI(config.file));
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           page.innerHTML = `<article class="markdown">${renderMarkdown(await response.text())}</article>`;
+          setUpCityJumps(key);
         } catch (error) {
+          setUpCityJumps("");
           page.innerHTML = `
             <div class="markdown">
               <p class="error">
@@ -630,6 +715,9 @@
 
     menuButton.addEventListener("click", () => setNav(!body.classList.contains("nav-open")));
     backdrop.addEventListener("click", () => setNav(false));
+    previousCityButton.addEventListener("click", () => jumpFoodCity(-1));
+    nextCityButton.addEventListener("click", () => jumpFoodCity(1));
+    window.addEventListener("scroll", updateCityJumpButtons, { passive: true });
     page.addEventListener("click", async event => {
       const button = event.target.closest(".copy-name");
       if (!button) return;
