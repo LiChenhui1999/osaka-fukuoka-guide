@@ -308,6 +308,11 @@
       font-weight: 750;
     }
 
+    .place-tags {
+      color: var(--muted);
+      font-size: .88rem;
+    }
+
     .place-actions {
       display: flex;
       flex-wrap: wrap;
@@ -419,8 +424,8 @@
           </a>
         </li>
         <li>
-          <a class="nav-link" href="#shinkansen" data-page="shinkansen">
-            <span class="nav-number">3</span><span>新干线购票</span>
+          <a class="nav-link" href="#transport" data-page="transport">
+            <span class="nav-number">3</span><span>交通导航</span>
           </a>
         </li>
       </ol>
@@ -447,10 +452,10 @@
           <span class="card-title">餐饮候选</span>
           <span class="card-note">两地具有代表性的当地料理。</span>
         </a>
-        <a class="welcome-link" href="#shinkansen">
-          <span class="card-number">3 · SHINKANSEN</span>
-          <span class="card-title">新干线购票</span>
-          <span class="card-note">从新大阪到博多的购票与乘车说明。</span>
+        <a class="welcome-link" href="#transport">
+          <span class="card-number">3 · TRANSIT</span>
+          <span class="card-title">交通导航</span>
+          <span class="card-note">市内交通与跨城出行的快速入口。</span>
         </a>
       </div>
     </section>
@@ -461,7 +466,7 @@
       welcome: { title: "大阪・福冈｜景点餐馆候选" },
       spots: { title: "景点候选池｜大阪・福冈", file: "1-景点候选池.md" },
       food: { title: "餐饮候选｜大阪・福冈", file: "2-餐饮候选.md" },
-      shinkansen: { title: "新干线购票｜大阪到福冈", file: "3-新干线购票.md" }
+      transport: { title: "交通导航｜大阪・福冈", file: "3-交通导航.md" }
     };
 
     const body = document.body;
@@ -489,17 +494,19 @@
     function inlineMarkdown(text) {
       const links = [];
       const textWithLinkTokens = text.replace(
-        /\[([^\]]+)\]\((https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=[^\s)]+)(?:\s+"([^"]+)")?\)/g,
-        (_, label, url, japaneseName) => {
+        /\[([^\]]+)\]\((https:\/\/www\.google\.com\/maps\/(?:search\/\?api=1&query=[^\s)]+|dir\/\?api=1&origin=[^\s)&]+&destination=[^\s)&]+&travelmode=transit))(?:\s+"([^"]+)")?\)(?:：\s*(.+))?$/g,
+        (_, label, url, japaneseName, tags) => {
           const token = `MAP_LINK_TOKEN_${links.length}_END`;
-          const copyText = japaneseName ||
+          const isDirections = url.includes("/maps/dir/");
+          const copyText = isDirections ? "" : japaneseName ||
             decodeURIComponent(new URL(url).searchParams.get("query") || "").replaceAll("+", " ");
           links.push(
             `<span class="place-card">` +
               `<span class="place-name">${escapeHtml(label)}</span>` +
+              (tags ? `<span class="place-tags">${escapeHtml(tags)}</span>` : "") +
               `<span class="place-actions">` +
-                `<a class="place-action" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" aria-label="在 Google Maps 查看${escapeHtml(label)}">Google Maps</a>` +
-                `<button class="place-action copy-name" type="button" data-copy-text="${escapeHtml(copyText)}">复制日文名</button>` +
+                `<a class="place-action" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" aria-label="在 Google Maps ${isDirections ? "导航" : "查看"}${escapeHtml(label)}">${isDirections ? "Google Maps 导航" : "Google Maps"}</a>` +
+                (isDirections ? "" : `<button class="place-action copy-name" type="button" data-copy-text="${escapeHtml(copyText)}">复制日文名</button>`) +
               `</span>` +
             `</span>`
           );
