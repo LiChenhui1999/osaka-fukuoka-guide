@@ -593,7 +593,18 @@
         }
       );
 
-      return escapeHtml(textWithLinkTokens)
+      const textWithAllLinkTokens = textWithLinkTokens.replace(
+        /\[([^\]]+)\]\((https:\/\/[^\s)]+)\)/g,
+        (_, label, url) => {
+          const token = `MAP_LINK_TOKEN_${links.length}_END`;
+          links.push(
+            `<a class="place-action" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`
+          );
+          return token;
+        }
+      );
+
+      return escapeHtml(textWithAllLinkTokens)
         .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
         .replace(/  $/, "<br>")
         .replace(/MAP_LINK_TOKEN_(\d+)_END/g, (_, index) => links[Number(index)]);
